@@ -7,16 +7,37 @@ import numpy as np
 
 
 #GLOBAL Variables
+laplacianFilter = np.array([
+  [0,1,0],
+  [1,-4,1],
+  [0,1,0],
+])
 
-filters = [np.full([3,3], 1/9), np.full([5,5], 1/25) , np.full([7,7], 1/49)]
+gaussiannFilter = np.array([
+  [1,2,1],
+  [2,4,2],
+  [1,2,1],
+]) / 16
+
+avergaeFilter = np.array([
+  [1,1,1],
+  [1,1,1],
+  [1,1,1]
+  ]) /9
+
+
+filters = [gaussiannFilter, laplacianFilter , avergaeFilter]
 
 currentFilter = filters[0]
+histType = 1
 
 #our default (rgb) colour
 bg="#100f1f"
 
-#default font
-myFont=("Calibri", 30, "bold")
+#default fonts
+defaultFont=("Calibri", 30, "bold")
+buttonFont = ("Calibri", 20, "bold")
+menuFont = ("Calibri", 10, "bold")
 
 imageDims = [400,300]
 
@@ -50,7 +71,7 @@ def ApplyFilter(inputImagePath, filter):
   imageWithPadding = cv2.copyMakeBorder(inputImage,1,1,1,1,cv2.BORDER_REPLICATE)
 
   # resizing the image down before processing, so the processing is faster
-  resizedImage = cv2.resize(imageWithPadding, (0,0), fx=1/4 , fy=1/4)
+  resizedImage = cv2.resize(imageWithPadding, imageDims)
 
 
   nrows , ncols , nchannels  = resizedImage.shape
@@ -95,27 +116,44 @@ def OpenImage():
     canvas2.itemconfig(outputImageBox, image=outputImage)
     
     
-def ProcessImage():
+def ProcessImage(outputImageCV):
     
-    if(inputImagePath.find("placeholder") == -1) :
-      global outputImage
-      outputImageCV = ApplyFilter(inputImagePath, currentFilter )
+    if(inputImagePath.find("placeholder") == -1):
       
+      global outputImage
       outputImageName =  "output_"+ inputImagePath.split("/")[-1].split(".")[0]
       outputImagePath = outputPath + outputImageName + ".png"
       
-      
-      
-      outputImage = ImageTk.PhotoImage(Image.fromarray(np.uint8(outputImageCV[:,:,::-1].tolist())).resize(imageDims))
+      if len(outputImageCV.shape) == 3:
+        outputImage = ImageTk.PhotoImage(Image.fromarray(np.uint8(outputImageCV[:,:,::-1].tolist())).resize(imageDims))
+      else:
+        outputImage = ImageTk.PhotoImage(Image.fromarray(np.uint8(outputImageCV.tolist())).resize(imageDims))
+        
       canvas2.itemconfig(outputImageBox, image=outputImage)
 
 
-def ShowHistogram():
+def ConvertToGrayScale(InputImagePath):
+  
+  coloured_img = cv2.resize(cv2.imread(InputImagePath) , imageDims)
+  gray_img = np.zeros(coloured_img.shape[0:2])
 
-  global outputImage
+  (row,col) = coloured_img.shape[0:2]
+  
+  for i in range(row):
+    for j in range(col):
+      gray_img[i,j] = sum(coloured_img[i,j]) * 0.33
+  return gray_img
 
-  # Reading the image
-  inputImage = cv2.imread(inputImagePath, 1)
+
+def ShowHistogram(type):
+  if type==1:
+    return ShowHistogram1(inputImagePath)
+  else:
+    return ShowHistogram2(inputImagePath)
+  
+
+def ShowHistogram1(inputImagePath):
+  inputImage = cv2.resize(cv2.imread(inputImagePath, 1), imageDims)
   # info about the image (height, width, number of channels)
   nrows , ncols , nchannels = inputImage.shape
   # initial values of the percentage of blue, green and red colors in the image
@@ -142,14 +180,60 @@ def ShowHistogram():
   outputImageName =  "output_"+ inputImagePath.split("/")[-1].split(".")[0]
   outputImagePath = outputPath + outputImageName + ".png"
   plt.savefig(outputImagePath, bbox_inches='tight')
-
-  outputImage = ImageTk.PhotoImage(Image.open(outputImagePath).resize(imageDims))
-  canvas2.itemconfig(outputImageBox, image=outputImage)
   
+  return cv2.imread(outputImagePath)
+
+
+def ShowHistogram2(inputImagePath):
+  Histogram = HistogramComputation(inputImagePath)
+  return PlotHistogram(Histogram)
+  
+  
+def HistogramComputation(inputImagePath):                                               #basically its a looping function over the converted image pixels with 3 channels
+	
+	Image = cv2.imread(inputImagePath)
+	ImageHeight, ImageWidth, ImageChannels = Image.shape
+	
+	Histogram = np.zeros([256, ImageChannels], np.int32)                          # creating empty array for each channel filled with zeros
+	
+	for h in range(0, ImageHeight):
+		for w in range(0, ImageWidth):
+			for c in range(0, ImageChannels):
+				colorValue = Image[h,w,c]
+				Histogram[ colorValue , c] +=1
+	
+	return Histogram
+
+
+def PlotHistogram(Histogram):
+  
+    global outputImagePath
+    plt.figure()
+    
+    plt.title("Color Image Histogram")
+    plt.xlabel("Intensity Level")
+    plt.ylabel("Intensity Frequency")
+    plt.xlim([0, 256])                                                            # specifies automatic or manual limit selection.
+    
+    plt.plot(Histogram[:,0],'b')                                 # This is to Plot Blue Channel with Blue Color
+    plt.plot(Histogram[:,1],'g')                                 # This is to Plot Green Channel with Green Color
+    plt.plot(Histogram[:,2],'r')                                 # This is to Plot Red Channel with Red Color
+    
+    outputImageName =  "output_"+ inputImagePath.split("/")[-1].split(".")[0]
+    outputImagePath = outputPath + outputImageName + ".png"
+    plt.savefig(outputImagePath, bbox_inches='tight')
+    
+    return cv2.imread(outputImagePath)
+    
 
 def SelectFilter(value):
   global currentFilter
   currentFilter = filters[value]
+
+
+def SelectHistogram(value):
+  global histType
+  histType = value
 
 
 def Quit():
@@ -176,15 +260,21 @@ window.title("Image Editor")
 menuBar = Menu(window) # Menu Top Bar
 menu1 = Menu(window) # Submenu that appears after clicking menu top bar
 submenu = Menu(window) # Another submenu that appears after clicking pervious submenu
+submenu2 = Menu(window)
 
-menuBar.add_cascade(label="Menu", menu=menu1)
+menuBar.add_cascade(label="Open Image", font=menuFont, command= OpenImage)
+menuBar.add_cascade(label="Modes", menu=menu1)
 
-menu1.add_cascade(label="Open Image", command= OpenImage)
-menu1.add_cascade(label="Filters", menu=submenu)
+
+menu1.add_cascade(label="Filter Types", menu=submenu)
+menu1.add_cascade(label="Histogram Types", menu=submenu2)
 
 submenu.add_radiobutton(label="Gaussian Filter", command= lambda: SelectFilter(0) )
 submenu.add_radiobutton(label="Laplacian Filter" , command= lambda: SelectFilter(1))
 submenu.add_radiobutton(label="Noise Removal Filter", command= lambda: SelectFilter(2))
+
+submenu2.add_radiobutton(label="Bar", command= lambda: SelectHistogram(1) )
+submenu2.add_radiobutton(label="Plot" , command= lambda: SelectHistogram(2))
 
 
 
@@ -227,9 +317,10 @@ outputImageBox = canvas2.create_image(0,0,anchor="nw", image=outputImage)
 
 
 #Creating Elements for Frame4
-Button(f4, text="Process Image", font=myFont, borderwidth = 0, command=lambda:ProcessImage()).pack(side=LEFT,padx=10)
-Button(f4, text="Show Histogram", font=myFont, borderwidth = 0, command= ShowHistogram).pack(side=LEFT,padx=10)
-Button(f4, text="Quit", font=myFont, borderwidth = 0, bg="red", command=lambda : Quit()).pack(side=BOTTOM,padx=10)
+Button(f4, text="Apply Filter", font=buttonFont, borderwidth = 0, command=lambda:ProcessImage(ApplyFilter(inputImagePath, currentFilter))).pack(side=LEFT,padx=10)
+Button(f4, text="Display Histogram", font=buttonFont, borderwidth = 0, command= lambda : ProcessImage(ShowHistogram(histType))).pack(side=LEFT,padx=10)
+Button(f4, text="Convert to Grayscale", font=buttonFont, borderwidth = 0, command= lambda: ProcessImage(ConvertToGrayScale(inputImagePath))).pack(side=LEFT,padx=10)
+Button(f4, text="Quit", font=buttonFont, borderwidth = 0, bg="red", command=lambda : Quit()).pack(side=BOTTOM,padx=10)
 
 
 
@@ -238,6 +329,7 @@ f1.pack()
 f2.pack(padx=50) 
 f3.pack(padx= 50)
 f4.pack(pady= 50)
+
 
 
 window.bind("<Escape>", smallScreen)

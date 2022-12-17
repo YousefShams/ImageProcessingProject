@@ -81,7 +81,7 @@ def ApplyFilter(inputImagePath, filter):
 
 
   # initializing r,g,b matrices with zeros, they will be filled with values later
-  bgrOutChannels = [ np.zeros([nrows-2, ncols-2]) for i in range(nchannels) ]
+  bgrOutChannels = [ np.zeros([nrows-2, ncols-2], dtype=np.uint8) for i in range(nchannels) ]
 
 
   for channelIndex in range(nchannels) :
@@ -128,10 +128,10 @@ def ProcessImage(outputImageCV):
   global outputImage
   
   if len(outputImageCV.shape) == 3:
-    outputImage = ImageTk.PhotoImage(Image.fromarray(np.uint8(outputImageCV[:,:,::-1].tolist())).resize(imageDims))
+    outputImage = ImageTk.PhotoImage(  Image.fromarray(outputImageCV[:,:,::-1]).resize(imageDims)  ) 
     
   else:
-    outputImage = ImageTk.PhotoImage(Image.fromarray(np.uint8(outputImageCV.tolist())).resize(imageDims))
+    outputImage = ImageTk.PhotoImage(  Image.fromarray(outputImageCV).resize(imageDims)   )
     
   canvas2.itemconfig(outputImageBox, image=outputImage)    
   
@@ -228,6 +228,22 @@ def PlotHistogram(Histogram):
     plt.savefig(outputImagePath, bbox_inches='tight')
     
     return cv2.imread(outputImagePath)
+
+
+def ExtractColor(inputImagePath,colorNum):
+  resize_image = cv2.resize(cv2.imread(inputImagePath), imageDims)
+  b,g,r = resize_image[:,:,0] , resize_image[:,:,1] , resize_image[:,:,2]
+  
+  blank = np.zeros(resize_image.shape[0:2], dtype= np.uint8)
+  
+  if(colorNum == 0):
+    return cv2.merge([b,blank,blank])
+  
+  elif(colorNum == 1):
+    return cv2.merge([blank, g ,blank])
+  
+  else:
+    return cv2.merge([blank, blank, r])
     
 
 def SelectFilter(value):
@@ -263,15 +279,21 @@ window.title("Image Editor")
 # Creating Menu Elements
 menuBar = Menu(window) # Menu Top Bar
 menu1 = Menu(window) # Submenu that appears after clicking menu top bar
+menu2 = Menu(window)
 submenu = Menu(window) # Another submenu that appears after clicking pervious submenu
 submenu2 = Menu(window)
 
 menuBar.add_cascade(label="Open", font=menuFont, command= OpenImage)
 menuBar.add_cascade(label="Modes", menu=menu1)
-
+menuBar.add_cascade(label="Exctract Color", menu=menu2)
 
 menu1.add_cascade(label="Filter Types", menu=submenu)
 menu1.add_cascade(label="Histogram Types", menu=submenu2)
+
+menu2.add_cascade(label="Blue", command= lambda : ProcessImage( ExtractColor(inputImagePath, 0) ))
+menu2.add_cascade(label="Green", command= lambda : ProcessImage( ExtractColor(inputImagePath, 1) ))
+menu2.add_cascade(label="Red", command= lambda : ProcessImage( ExtractColor(inputImagePath, 2) ))
+
 
 submenu.add_radiobutton(label="Gaussian Filter", command= lambda: SelectFilter(0) )
 submenu.add_radiobutton(label="Laplacian Filter" , command= lambda: SelectFilter(1))

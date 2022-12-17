@@ -8,9 +8,9 @@ import numpy as np
 
 #GLOBAL Variables
 laplacianFilter = np.array([
-  [0,1,0],
-  [1,-4,1],
-  [0,1,0],
+  [1,1,1],
+  [1,-8,1],
+  [1,1,1],
 ])
 
 gaussiannFilter = np.array([
@@ -22,9 +22,8 @@ gaussiannFilter = np.array([
 avergaeFilter = np.array([
   [1,1,1],
   [1,1,1],
-  [1,1,1]
+  [1,1,1],
   ]) /9
-
 
 filters = [gaussiannFilter, laplacianFilter , avergaeFilter]
 
@@ -107,8 +106,16 @@ def OpenImage():
     global inputImage
     global inputImagePath
     global outputImage
-
-    inputImagePath = filedialog.askopenfilename(title= "Open Image")
+    
+    previnputImagePath = inputImagePath
+    
+    #function that opens a file dialog and returns the seleected file path
+    inputImagePath = filedialog.askopenfilename(title= "Open Image")    
+    
+    #if the returned path is empty, take the value of the previous path
+    if(inputImagePath==""): inputImagePath = previnputImagePath
+    
+    #updating the user interface input image with the the selected image from the input path
     inputImage = ImageTk.PhotoImage(Image.open(inputImagePath).resize(imageDims))
     canvas1.itemconfig(inputImageBox, image=inputImage)
     
@@ -117,20 +124,17 @@ def OpenImage():
     
     
 def ProcessImage(outputImageCV):
+  
+  global outputImage
+  
+  if len(outputImageCV.shape) == 3:
+    outputImage = ImageTk.PhotoImage(Image.fromarray(np.uint8(outputImageCV[:,:,::-1].tolist())).resize(imageDims))
     
-    if(inputImagePath.find("placeholder") == -1):
-      
-      global outputImage
-      outputImageName =  "output_"+ inputImagePath.split("/")[-1].split(".")[0]
-      outputImagePath = outputPath + outputImageName + ".png"
-      
-      if len(outputImageCV.shape) == 3:
-        outputImage = ImageTk.PhotoImage(Image.fromarray(np.uint8(outputImageCV[:,:,::-1].tolist())).resize(imageDims))
-      else:
-        outputImage = ImageTk.PhotoImage(Image.fromarray(np.uint8(outputImageCV.tolist())).resize(imageDims))
-        
-      canvas2.itemconfig(outputImageBox, image=outputImage)
-
+  else:
+    outputImage = ImageTk.PhotoImage(Image.fromarray(np.uint8(outputImageCV.tolist())).resize(imageDims))
+    
+  canvas2.itemconfig(outputImageBox, image=outputImage)    
+  
 
 def ConvertToGrayScale(InputImagePath):
   
@@ -153,6 +157,11 @@ def ShowHistogram(type):
   
 
 def ShowHistogram1(inputImagePath):
+  Histogram = HistogramComputation(inputImagePath)
+  return PlotHistogram(Histogram)
+  
+
+def ShowHistogram2(inputImagePath):
   inputImage = cv2.resize(cv2.imread(inputImagePath, 1), imageDims)
   # info about the image (height, width, number of channels)
   nrows , ncols , nchannels = inputImage.shape
@@ -183,11 +192,6 @@ def ShowHistogram1(inputImagePath):
   
   return cv2.imread(outputImagePath)
 
-
-def ShowHistogram2(inputImagePath):
-  Histogram = HistogramComputation(inputImagePath)
-  return PlotHistogram(Histogram)
-  
   
 def HistogramComputation(inputImagePath):                                               #basically its a looping function over the converted image pixels with 3 channels
 	
@@ -262,7 +266,7 @@ menu1 = Menu(window) # Submenu that appears after clicking menu top bar
 submenu = Menu(window) # Another submenu that appears after clicking pervious submenu
 submenu2 = Menu(window)
 
-menuBar.add_cascade(label="Open Image", font=menuFont, command= OpenImage)
+menuBar.add_cascade(label="Open", font=menuFont, command= OpenImage)
 menuBar.add_cascade(label="Modes", menu=menu1)
 
 

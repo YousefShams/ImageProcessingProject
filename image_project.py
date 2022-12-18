@@ -162,6 +162,7 @@ def ShowHistogram1(inputImagePath):
   
 
 def ShowHistogram2(inputImagePath):
+    
   inputImage = cv2.resize(cv2.imread(inputImagePath, 1), imageDims)
   # info about the image (height, width, number of channels)
   nrows , ncols , nchannels = inputImage.shape
@@ -182,11 +183,12 @@ def ShowHistogram2(inputImagePath):
   x = ["Blue", "Green", "Red"]
   y = colorsRatios.copy()
 
+  plt.figure()
   plt.bar(x[0],y[0], color="b")
   plt.bar(x[1],y[1], color="g")
   plt.bar(x[2],y[2], color="r")
 
-  outputImageName =  "output_"+ inputImagePath.split("/")[-1].split(".")[0]
+  outputImageName =  "output-bar-"+ inputImagePath.split("/")[-1].split(".")[0]
   outputImagePath = outputPath + outputImageName + ".png"
   plt.savefig(outputImagePath, bbox_inches='tight')
   
@@ -223,7 +225,7 @@ def PlotHistogram(Histogram):
     plt.plot(Histogram[:,1],'g')                                 # This is to Plot Green Channel with Green Color
     plt.plot(Histogram[:,2],'r')                                 # This is to Plot Red Channel with Red Color
     
-    outputImageName =  "output_"+ inputImagePath.split("/")[-1].split(".")[0]
+    outputImageName =  "output-plot"+ inputImagePath.split("/")[-1].split(".")[0]
     outputImagePath = outputPath + outputImageName + ".png"
     plt.savefig(outputImagePath, bbox_inches='tight')
     
@@ -299,8 +301,9 @@ submenu.add_radiobutton(label="Gaussian Filter", command= lambda: SelectFilter(0
 submenu.add_radiobutton(label="Laplacian Filter" , command= lambda: SelectFilter(1))
 submenu.add_radiobutton(label="Noise Removal Filter", command= lambda: SelectFilter(2))
 
-submenu2.add_radiobutton(label="Bar", command= lambda: SelectHistogram(1) )
-submenu2.add_radiobutton(label="Plot" , command= lambda: SelectHistogram(2))
+submenu2.add_radiobutton(label="Plot" , command= lambda: SelectHistogram(1))
+submenu2.add_radiobutton(label="Bar", command= lambda: SelectHistogram(2) )
+
 
 
 
